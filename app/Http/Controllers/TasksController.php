@@ -22,9 +22,8 @@ class TasksController extends Controller
   public function index()
   {
     // return view('tasks.index');
-    $tasks = Task::where('user_id', Auth::user()->id)
-      ->orderBy('deadline', 'asc')
-      ->get();
+    // 締切早い順にソートしてデータを取得
+    $tasks = Task::getMyAllOrderByDeadline();
     return view('tasks.index', [
       'tasks' => $tasks
     ]);
@@ -60,13 +59,10 @@ class TasksController extends Controller
         ->withInput()
         ->withErrors($validator);
     }
-    // Eloquentモデル
-    $task = new Task;
-    $task->user_id = Auth::user()->id;
-    $task->task = $request->task;
-    $task->deadline = $request->deadline;
-    $task->comment = $request->comment;
-    $task->save();
+    $data = $request->merge(['user_id' => Auth::user()->id])->all();
+    // create()は最初から用意されている関数
+    // 戻り値は挿入されたレコードの情報
+    $result = Task::create($data);
     // ルーティング「tasks.index」にリクエスト送信（一覧ページに移動）
     return redirect()->route('tasks.index');
   }
@@ -80,7 +76,6 @@ class TasksController extends Controller
   public function show($id)
   {
     $task = Task::find($id);
-    //   dd($task);
     return view('tasks.show', ['task' => $task]);
   }
 
@@ -118,11 +113,10 @@ class TasksController extends Controller
         ->withErrors($validator);
     }
     //データ更新処理
-    $task = Task::find($id);
-    $task->task   = $request->task;
-    $task->deadline = $request->deadline;
-    $task->comment = $request->comment;
-    $task->save();
+    // updateは更新する情報がなくても更新が走る（updated_atが更新される）
+    $task = Task::find($id)->update($request->all());
+    // fill()save()は更新する情報がない場合は更新が走らない（updated_atが更新されない）
+    // $task = Task::find($id)->fill($request->all())->save();
     return redirect()->route('tasks.index');
   }
 
@@ -134,8 +128,7 @@ class TasksController extends Controller
    */
   public function destroy($id)
   {
-    $task = Task::find($id);
-    $task->delete();
+    $task = Task::find($id)->delete();
     return redirect()->route('tasks.index');
   }
 }
